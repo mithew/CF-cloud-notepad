@@ -1,17 +1,17 @@
-import jwt from '@tsndr/cloudflare-worker-jwt'
-import * as TEMPL from './template'
-import { SALT, SECRET, SUPPORTED_LANG } from './constant'
+import jwt from '@tsndr/cloudflare-worker-jwt';
+import * as TEMPL from './template';
+import { SALT, SECRET, SUPPORTED_LANG } from './constant';
 
 // generate random string
 export const genRandomStr = n => {
     // remove char that confuse user
-    const charset = '2345679abcdefghjkmnpqrstwxyz'
+    const charset = '2345679abcdefghjkmnpqrstwxyz';
     return Array(n)
         .join()
         .split(',')
         .map(() => charset.charAt(Math.floor(Math.random() * charset.length)))
-        .join('')
-}
+        .join('');
+};
 
 export function returnPage(type, data) {
     return new Response(TEMPL[type](data), {
@@ -25,57 +25,68 @@ export function returnJSON(code, data, headers = {}) {
     const successTempl = {
         err: 0,
         msg: 'ok',
-        ...data && { data },
-    }
+        ...(data !== undefined && { data }), // Conditionally add data if it exists
+    };
     const errTempl = {
         err: code,
-        msg: JSON.stringify(data),
-    }
-    const ret = code ? errTempl : successTempl
+        msg: typeof data === 'string' ? data : (data instanceof Error ? data.message : JSON.stringify(data)),
+    };
+    const ret = code ? errTempl : successTempl;
     return new Response(JSON.stringify(ret), {
         headers: {
             'content-type': 'application/json;charset=UTF-8',
             ...headers,
         },
-    })
+    });
 }
 
 export async function MD5(str) {
-    const msgUint8 = new TextEncoder().encode(str)
-    const hashBuffer = await crypto.subtle.digest('MD5', msgUint8) 
-    const hashArray = Array.from(new Uint8Array(hashBuffer))
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+    const msgUint8 = new TextEncoder().encode(str);
+    const hashBuffer = await crypto.subtle.digest('MD5', msgUint8);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 export async function saltPw(password) {
-    const hashPw = await MD5(password)
-    return await MD5(`${hashPw}+${SALT}`)
+    const hashPw = await MD5(password);
+    return await MD5(`${hashPw}+${SALT}`);
 }
 
 export async function checkAuth(cookie, path) {
     if (cookie.auth) {
-        const valid = await jwt.verify(cookie.auth, SECRET)
-        if (valid) {
-            const payload = jwt.decode(cookie.auth)
-            if (payload.path === path) {
-                return true
+        try {
+            const valid = await jwt.verify(cookie.auth, SECRET);
+            if (valid) {
+                const payload = jwt.decode(cookie.auth);
+                if (payload.path === path) {
+                    return true;
+                }
             }
+        } catch (error) {
+            // JWT verification failed, consider the user as not authenticated
+            console.error('JWT verification error:', error);
+            return false;
         }
     }
-    return false
+    return false;
 }
 
 export async function queryNote(key) {
-    const result = await NOTES.getWithMetadata(key)
-    return {
-        value: result.value || '',
-        metadata: result.metadata || {},
+    try {
+        const result = await NOTES.getWithMetadata(key);
+        return {
+            value: result.value || '',
+            metadata: result.metadata || {},
+        };
+    } catch (error) {
+        console.error('Error querying note:', error);
+        return { value: '', metadata: {} }; // Return default values on error
     }
 }
 
 export function getI18n(request) {
-    const DEFAULT_LANG = 'en'
-    const al = request.headers.get('Accept-Language') || DEFAULT_LANG
-    const acceptList = al.split(',').map(lang => lang.split(';')[0].trim())
-    return acceptList.find(lang => Object.keys(SUPPORTED_LANG).includes(lang)) || DEFAULT_LANG
+    const DEFAULT_LANG = 'en';
+    const al = request.headers.get('Accept-Language') || DEFAULT_LANG;
+    const acceptList = al.split(',').map(lang => lang.split(';')[0].trim());
+    return acceptList.find(lang => Object.keys(SUPPORTED_LANG).includes(lang)) || DEFAULT_LANG;
 }
