@@ -5,7 +5,7 @@ import jwt from '@tsndr/cloudflare-worker-jwt';
 import { queryNote, MD5, checkAuth, genRandomStr, returnPage, returnJSON, saltPw, getI18n } from './helper';
 import { SECRET } from './constant';
 
-// Initialize router
+// Initialize router..
 const router = Router();
 
 // Middleware to get language
