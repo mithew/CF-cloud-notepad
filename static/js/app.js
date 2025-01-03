@@ -44,6 +44,17 @@ const errHandle = (err) => {
     showMessage(`${getI18n('err')}: ${err}`, 'error');
 };
 
+const throttle = (func, delay) => {
+    let tid = null;
+    return (...args) => {
+        if (tid) return;
+        tid = setTimeout(() => {
+            func(...args);
+            tid = null;
+        }, delay);
+    };
+};
+
 const handlePasswdAuth = async () => {
     const passwd = window.prompt(getI18n('pepw'));
     if (passwd == null) return;
@@ -88,11 +99,8 @@ const renderMarkdown = (node, text) => {
     }
 };
 
-const handleTextareaInput = ($textarea, $previewMd) => {
+const handleTextareaInput = async ($textarea, $loading, $previewMd) => {
     renderMarkdown($previewMd, $textarea.value);
-};
-
-const handleTextareaBlur = async ($textarea, $loading) => {
     $loading.style.display = 'inline-block';
     const data = {
         t: $textarea.value,
@@ -242,8 +250,7 @@ window.addEventListener('DOMContentLoaded', () => {
     };
 
     if ($textarea) {
-        $textarea.oninput = () => handleTextareaInput($textarea, $previewMd); // 输入时更新预览
-        $textarea.addEventListener('blur', () => handleTextareaBlur($textarea, $loading)); // 失去焦点时保存
+        $textarea.oninput = throttle(() => handleTextareaInput($textarea, $loading, $previewMd), 1000);
     }
 
     if ($pwBtn) {
