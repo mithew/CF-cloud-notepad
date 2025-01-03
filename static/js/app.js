@@ -250,7 +250,7 @@ window.addEventListener('DOMContentLoaded', () => {
     };
 
     if ($textarea) {
-        $textarea.oninput = throttle(() => handleTextareaInput($textarea, $loading, $previewMd), 1000);
+        $textarea.onblur = () => handleTextareaInput($textarea, $loading, $previewMd);
     }
 
     if ($pwBtn) {
